@@ -1,0 +1,138 @@
+kind: DaemonSet
+
+variant: elasticsearch7
+
+image:
+  repository: fluent/fluentd-kubernetes-daemonset
+  tag: v1.16-debian-elasticsearch7-1
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+
+rbac:
+  create: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 200Mi
+  limits:
+    cpu: 300m
+    memory: 400Mi
+
+env:
+  - name: FLUENT_UID
+    value: "0"
+  - name: K8S_NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+
+fileConfigs:
+  01_sources.conf: |
+    <source>
+      @type tail
+      @id in_tail_container_logs
+      @label @KUBERNETES
+      path /var/log/containers/*_hcp_hcp-api-gateway-*.log,/var/log/containers/*_hcp_hcp-user-service-*.log,/var/log/containers/*_hcp_hcp-compute-service-*.log,/var/log/containers/*_hcp_hcp-orchestrator-worker-*.log
+      pos_file /var/log/fluentd-containers-structured.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type multi_format
+        <pattern>
+          format json
+          time_key time
+          time_type string
+          time_format "%Y-%m-%dT%H:%M:%S.%NZ"
+          keep_time_key false
+        </pattern>
+        <pattern>
+          format regexp
+          expression /^(?<time>.+) (?<stream>stdout|stderr)( (.))? (?<log>.*)$/
+          time_format '%Y-%m-%dT%H:%M:%S.%NZ'
+          keep_time_key false
+        </pattern>
+      </parse>
+      emit_unmatched_lines true
+    </source>
+
+    <source>
+      @type prometheus
+      bind 0.0.0.0
+      port 24231
+      metrics_path /metrics
+    </source>
+
+  02_filters.conf: |
+    <label @KUBERNETES>
+      <match kubernetes.var.log.containers.fluentd**>
+        @type relabel
+        @label @FLUENT_LOG
+      </match>
+
+      <filter kubernetes.**>
+        @type kubernetes_metadata
+        @id filter_kube_metadata
+        skip_labels false
+        skip_container_metadata false
+        skip_namespace_metadata true
+        skip_master_url true
+      </filter>
+
+      <filter kubernetes.**>
+        @type grep
+        <regexp>
+          key $.kubernetes.namespace_name
+          pattern ^hcp$
+        </regexp>
+      </filter>
+
+      <filter kubernetes.**>
+        @type grep
+        <regexp>
+          key $.kubernetes.container_name
+          pattern ^(hcp-api-gateway|hcp-user-service|hcp-compute-service|hcp-orchestrator-worker)$
+        </regexp>
+      </filter>
+
+      <filter kubernetes.**>
+        @type parser
+        key_name log
+        reserve_data true
+        remove_key_name_field true
+        emit_invalid_record_to_error false
+        <parse>
+          @type json
+        </parse>
+      </filter>
+
+      <match **>
+        @type relabel
+        @label @DISPATCH
+      </match>
+    </label>
+
+  04_outputs.conf: |
+    <label @OUTPUT>
+      <match kubernetes.**>
+        @type elasticsearch
+        host elasticsearch-master.logging.svc.cluster.local
+        port 9200
+        scheme https
+        ssl_verify false
+        user elastic
+        password 4hhm5faoJcqxMwHA
+
+        logstash_format true
+        logstash_prefix k8s
+        log_es_400_reason true
+
+        <buffer>
+          @type memory
+          flush_interval 5s
+          retry_forever true
+        </buffer>
+      </match>
+    </label>

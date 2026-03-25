@@ -1,0 +1,19 @@
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 300m
+    memory: 512Mi
+
+elasticsearchHosts: "https://elasticsearch-master:9200"
+
+kibanaConfig:
+  kibana.yml: |
+    elasticsearch.ssl.verificationMode: none
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 12
