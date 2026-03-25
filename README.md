@@ -48,7 +48,7 @@ $ kubectl apply -f metrics/k8s/api-gateway-monitor.yaml
 
 
 
-### Logs
+### Logs (Elasticsearch + Fluentd + Kibana)
 
 ![img_3.png](img_3.png)
 
