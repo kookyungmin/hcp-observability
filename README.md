@@ -11,14 +11,14 @@
 
 ## 해피 클라우드 플랫폼 아키텍처
 
-![img.png](img.png)
+![img.png](image/img.png)
 
 
 ### Metrics (Prometheus + Grafana)
 
-![img_1.png](img_1.png)
+![img_1.png](image/img_1.png)
 
-![img_2.png](img_2.png)
+![img_2.png](image/img_2.png)
 
 * kube-prometheus-stack install
 
@@ -50,7 +50,9 @@ $ kubectl apply -f metrics/k8s/api-gateway-monitor.yaml
 
 ### Logs (Elasticsearch + Fluentd + Kibana)
 
-![img_3.png](img_3.png)
+![img_7.png](image/img_7.png)
+
+![img_6.png](image/img_6.png)
 
 * json 로그 포맷
 
@@ -63,8 +65,8 @@ $ kubectl apply -f metrics/k8s/api-gateway-monitor.yaml
   "thread": "http-nio-8080-exec-7",
   "message": "액세스 토큰 재발급 요청을 수신했습니다.",
   "requestId": "c8c3f642-6707-4fef-91ea-26d86c3750ce",
-  "traceId": "",
-  "spanId": ""
+  "traceId": "4040fec5b66837baf07081d513f19eb3",
+  "spanId": "c12d8e09773dd371"
 }
 ```
 
@@ -137,3 +139,13 @@ $ helm upgrade --install fluentd fluent/fluentd \
 
 ### Traces
 
+![img_5.png](image/img_5.png)
+
+![img_4.png](image/img_4.png)
+
+* jaeger install
+
+```
+$ kubectl create namespace observability
+$ kubectl apply -f jaeger.yaml
+```
